@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Credit Card Trap Game</title>
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+
+  <!-- Charts -->
+  <script src="https://d3js.org/d3.v5.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/c3/c3.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/c3/c3.min.css" rel="stylesheet">
+
+  <script src="eventsData.js"></script>
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      margin: 0;
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+
+    h1 {
+      text-align: center;
+      margin: 15px;
+      font-weight: 600;
+    }
+
+    .container {
+      display: flex;
+      height: calc(100vh - 70px);
+      gap: 15px;
+      padding: 15px;
+    }
+
+    .left-panel, .right-panel {
+      background: #1e293b;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    }
+
+    .left-panel { width: 28%; }
+    .right-panel { width: 72%; }
+
+    .stat {
+      margin: 12px 0;
+      font-size: 18px;
+      padding: 12px;
+      background: #0f172a;
+      border-radius: 10px;
+      transition: all 0.3s ease;
+    }
+
+    button {
+      width: 100%;
+      margin: 8px 0;
+      padding: 12px;
+      font-size: 15px;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    button:nth-of-type(1) { background: #22c55e; color: white; }
+    button:nth-of-type(2) { background: #3b82f6; color: white; }
+    button:nth-of-type(3) { background: #f59e0b; color: white; }
+
+    button:not(:disabled):hover {
+      transform: translateY(-2px);
+      opacity: 0.9;
+    }
+    button:disabled{
+      background: #475569;
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
+    #timer {
+      font-size: 18px;
+      font-weight: bold;
+      padding: 10px;
+      border-radius: 10px;
+      text-align: center;
+      background: #0f172a;
+      margin-bottom: 10px;
+    }
+
+    #event{
+      padding: 15px;
+      border-radius: 12px;
+      background: #0f172a;
+      margin-bottom: 15px;
+      border-left: 5px solid #3b82f6;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 999;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.6);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .modal.show {
+      display: block;
+      opacity: 1;
+    }
+
+    .modal-content {
+      background: #1e293b;
+      color: white;
+      padding: 20px;
+      margin: 5% auto;
+      width: 600px;
+      border-radius: 12px;
+      text-align: center;
+    }
+    /* Chart background */
+  #chart {
+    background: #1e293b;
+    border-radius: 12px;
+    padding: 10px;
+  }
+
+  /* Axis text */
+  .c3-axis-x text,
+  .c3-axis-y text {
+    fill: #e2e8f0; /* light text */
+    font-size: 13px;
+  }
+
+  /* Axis labels */
+  .c3-axis-x-label,
+  .c3-axis-y-label {
+    fill: #e2e8f0;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  /* Grid lines */
+  .c3-grid line {
+    stroke: #334155;
+  }
+
+  /* Axis lines */
+  .c3-axis path,
+  .c3-axis line {
+    stroke: #64748b;
+  }
+
+  /* Legend text */
+  .c3-legend-item text {
+    fill: #e2e8f0;
+    font-size: 13px;
+  }
+
+  /* Chart title */
+  .c3-title {
+    fill: #e2e8f0;
+    font-size: 16px;
+    font-weight: 600;
+  }
+  .fit{
+    width:250px;
+    height:200px;
+    object-fit:cover;
+  }
+  /* Base timer */
+  #timer {
+    font-size: 18px;
+    font-weight: bold;
+    padding: 10px;
+    border-radius: 10px;
+    text-align: center;
+    background: #0f172a;
+    margin-bottom: 10px;
+    transition: all 0.3s ease;
+  }
+
+  /* Warning (10s or less) */
+  .timer-warning {
+    background: #78350f;
+    color: #fbbf24;
+  }
+
+  /* Danger (5s or less) */
+  .timer-danger {
+    background: #7f1d1d;
+    color: #fecaca;
+    animation: pulse 1s infinite;
+  }
+
+  /* Pulse animation */
+  @keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+    100% { transform: scale(1); }
+  }
+  input[type="number"] {
+    width: 100%;
+    margin: 8px 0;
+    padding: 12px;
+    font-size: 15px;
+    border-radius: 10px;
+    border: none;
+    box-sizing: border-box; /* 🔥 key fix */
+  }
+  </style>
+</head>
+<body>
+
+<h1>💳 Escape the Credit Card Trap</h1>
+
+
+<!-- Modals -->
+<div id="winModal" class="modal">
+  <div class="modal-content">
+    <h2>🎉 You Escaped the Credit Card Trap!</h2>
+    <p>Great job! You paid off your balance.</p>
+    <div id="winSummary" style="
+      text-align:left;
+      margin:15px 0;
+      padding:15px;
+      background:#0f172a;
+      border-radius:10px;
+      font-size:14px;
+      line-height:1.6;">
+    </div>
+    <button onclick="closeWinModal()" style="background:#64748b;">
+      Close
+    </button>
+  </div>
+</div>
+<div id="scenarioModal" class="modal">
+  <div class="modal-content">
+    <h3 id="modalMonth" style="font-size:20pt"></h3>
+    <h3 id="modalTitle"></h3>
+    <div style="display:flex">
+      <div style="margin-top:20px ">
+        <img id="modalImage" src="" class="fit">
+      </div>
+      <div style="flex:1;padding:10px ">
+        <p id="modalScenario" style="font-size:18pt"></p>
+      </div>
+    </div>
+    <button id="continueButton" onclick="acknowledgeEvent()">Continue</button>
+  </div>
+</div>
+
+<div id="lateModal" class="modal">
+  <div class="modal-content">
+    <h3>⏰ Late Payment</h3>
+    <p>A $35 late fee has been added.</p>
+    <button onclick="continueAfterLate()">Continue</button>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- LEFT PANEL -->
+  <div class="left-panel">
+    <div class="stat" id="monthStat"></div>
+    <div class="stat" id="balanceStat"></div>
+    <div class="stat" id="interestStat"></div>
+    <div class="stat" id="lateFeeStat"></div>
+    <div class="stat" id="checkingStat"></div>
+
+    <hr>
+
+    <button onclick="makePayment(25)">Pay Minimum</button>
+    <!-- <button onclick="makePayment(50)">Pay $50</button> -->
+    <button onclick="makePayment(100)">Pay $100</button>
+    <hr>
+    <!-- <button onclick="payFullBalance()" style="background:#ef4444; color:white;">
+  Pay Full Balance
+</button> -->
+    <input 
+      type="number" 
+      id="customAmount" 
+      placeholder="Enter custom amount"
+      min="1"
+    >
+
+    <button onclick="handleCustomPayment()" style="background:#8b5cf6; color:white;">
+      Pay Custom Amount
+    </button>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right-panel">
+    <div id="timer"></div>
+    <div id="eventContainer">
+      <div id="event" style="display:flex;">
+        <div id="eventEmoji" style="font-size:46pt;"></div>
+        <div id="eventScenario" style="font-size:16pt;flex:1"></div>
+      </div>
+    </div>
+    <div id="chart"></div>
+  </div>
+
+</div>
+
+<script>
+let balance, rate, month;
+let totalInterest, totalLateFees;
+let checkingBalance, monthlyIncome = 150;
+let timer, timerInterval, gameOver, currentEvent;
+
+let chart;
+let months, balanceData, interestData, lateFeeData;
+const eventEmoji = document.getElementById("eventEmoji");
+const eventScenario = document.getElementById("eventScenario");
+const timerEl = document.getElementById("timer");
+const monthStat = document.getElementById("monthStat");
+const balanceStat = document.getElementById("balanceStat");
+const interestStat = document.getElementById("interestStat");
+const lateFeeStat = document.getElementById("lateFeeStat");
+const checkingStat = document.getElementById("checkingStat");
+
+const scenarioModal = document.getElementById("scenarioModal");
+const modalMonth = document.getElementById("modalMonth");
+const modalTitle = document.getElementById("modalTitle");
+const modalScenario = document.getElementById("modalScenario");
+const modalImage = document.getElementById("modalImage");
+
+const eventContainer = document.getElementById("eventContainer");
+const event = document.getElementById("event");
+
+const lateModal = document.getElementById("lateModal");
+const winModal = document.getElementById("winModal");
+function initGame() {
+
+  balance = 1000;
+  rate = 0.24/12;
+  month = 0;
+
+  totalInterest = 0;
+  totalLateFees = 0;
+  checkingBalance = 0;
+  gameOver = false;
+
+  months = ['x', 0];
+  balanceData = ['Balance', balance];
+  interestData = ['Interest', 0];
+  lateFeeData = ['Late Fees', 0];
+
+  document.getElementById("chart").innerHTML = "";
+
+  chart = c3.generate({
+    bindto: '#chart',
+    data: {
+      x: 'x',
+      columns: [months, balanceData, interestData, lateFeeData],
+      types: {
+        Balance: 'line',
+        Interest: 'area-spline',
+        'Late Fees': 'area-spline'
+      },
+      colors: {
+        Balance: '#22c55e',
+        Interest: '#f59e0b',
+        'Late Fees': '#ef4444'
+      }
+    },
+    axis: {
+      x: { label: 'Month' },
+      y: {}
+    },
+    point: { show: false },
+    legend: { position: 'right' },
+    title: { text: 'Debt Growth' },
+    grid: {
+      y: {
+        show: true
+      }
+    },
+    padding: {
+      left: 50,
+      right: 20,
+      top: 20,
+      bottom: 20
+    }
+  });
+
+  updateStats();
+  nextTurn();
+}
+
+function nextTurn() {
+  if (gameOver) return;
+
+  checkingBalance += monthlyIncome;
+  currentEvent = getRandomEvent();
+  showScenarioModal();
+}
+
+function getRandomEvent() {
+  let roll = Math.random();
+  if (roll < 0.2) return { emoji:"😌", image:"noevent.avif",text:"No event", effect:0, scenario:"Nothing happens." };
+  let list = roll < 0.5 ? positiveEvents : negativeEvents;
+  return list[Math.floor(Math.random()*list.length)];
+}
+
+function showScenarioModal() {
+  resetTimer();
+  modalMonth.innerText = "Month " + (month+1);
+  modalTitle.innerText = `${currentEvent.emoji} ${currentEvent.text} ($${currentEvent.effect})`;
+  modalScenario.innerText = currentEvent.scenario;
+  modalImage.src = `images/${currentEvent.image}`;
+  const btn = document.getElementById("continueButton");
+
+  // Hide button initially
+  btn.disabled = true;
+  btn.style.backgroundColor =  "gray";
+  btn.innerText = "Please wait...";
+
+  scenarioModal.classList.add("show");
+
+  setTimeout(() => {
+    btn.innerText = "Continue";
+    btn.style.backgroundColor =  "#22c55e";
+    btn.disabled = false;
+  }, 5000);
+}
+
+function acknowledgeEvent() {
+  scenarioModal.classList.remove("show");
+  let insufficientFunds = false;
+  let remaining = 0
+
+  if (currentEvent.effect >= 0) {
+    // Positive event → goes to checking
+    checkingBalance += currentEvent.effect;
+  } else {
+    // Negative event → try to cover with checking
+    let cost = Math.abs(currentEvent.effect);
+
+    if (checkingBalance >= cost) {
+      // Fully covered by checking
+      checkingBalance -= cost;
+    } else {
+      // Partially covered → remainder goes to credit card
+      remaining = cost - checkingBalance;
+      checkingBalance = 0;
+      balance += remaining; // 👈 add to credit card debt
+      insufficientFunds = true;
+    }
+  }
+
+  let borderColor = currentEvent.effect > 0 ? "#22c55e"
+    : currentEvent.effect < 0 ? "#ef4444"
+    : "#64748b";
+
+  eventContainer.style.borderLeft = `10px solid ${borderColor}`;
+
+  eventEmoji.innerHTML = currentEvent.emoji;
+  eventScenario.innerHTML = `<strong>${currentEvent.text}
+                                    (${currentEvent.effect >= 0 ? "+" : "-"}$${Math.abs(currentEvent.effect)})
+                             </strong><br>
+                             ${currentEvent.scenario}<hr>
+                             `;
+  if(insufficientFunds){
+    eventScenario.innerHTML += `<div id="insufficientFundsMSG"> 
+                                  Insufficient funds in the account to cover  
+                                  "${currentEvent.text}".  Credit card was charged 
+                                  the difference of $${remaining}.      
+                                </div>`
+  }else{
+    let difference = monthlyIncome + currentEvent.effect;
+    eventScenario.innerHTML += `<div class="monthlyStatement">
+                                  Monthly Income: $${monthlyIncome}<br>
+                                  Monthly Event: ${currentEvent.effect >= 0 ? "+" : "-"}$${Math.abs(currentEvent.effect)}<br>
+                                  $${difference} was ${difference >=0? "added":"removed"} to your account.
+                              </div>`;
+                             
+  }
+  updateStats();
+  resetTimer()
+  startTimer();
+}
+
+function startTimer() {
+  timer = 20;
+  updateTimer();
+
+  clearInterval(timerInterval);
+
+  timerInterval = setInterval(()=>{
+    timer--;
+    updateTimer();
+
+    if(timer<=0){
+      clearInterval(timerInterval);
+      applyLateFee();
+    }
+  },1000);
+}
+
+function updateTimer() {
+  timerEl.innerHTML = `⏳ Time: <strong>${timer}</strong>`;
+
+  const maxTime = 30; // starting time
+  const ratio = timer / maxTime; // 1 → 0
+
+  // Convert ratio to hue (120 = green → 0 = red)
+  const hue = ratio * 120;
+
+  // Apply dynamic color using HSL
+  timerEl.style.backgroundColor = `hsl(${hue}, 70%, 25%)`;
+  timerEl.style.color = `hsl(${hue}, 90%, 80%)`;
+
+  // Optional: add pulse ONLY when very low
+  if (timer <= 5) {
+    const scale = 1 + (1 - ratio) * 0.2; // grows up to 1.2x
+    timerEl.style.transform = `scale(${scale})`;
+    timerEl.style.animation = "pulse 1s infinite";
+  } else if(timer < 15){
+    const glowIntensity = (1 - ratio) * 20; // increases as time runs out
+    timerEl.style.boxShadow = `0 0 ${glowIntensity}px rgba(255,0,0,0.7)`;
+  }else {
+    timerEl.style.animation = "none";
+  }
+}
+
+function makePayment(amount){
+  if(gameOver) return;
+  if(amount>checkingBalance){ alert("Not enough money!"); return; }
+
+  clearInterval(timerInterval);
+  checkingBalance -= amount;
+  processMonth(amount);
+
+  setTimeout(nextTurn,800);
+}
+
+function handleCustomPayment() {
+  if (gameOver) return;
+
+  const input = document.getElementById("customAmount");
+  let amount = parseFloat(input.value);
+
+  // Basic validation
+  if (isNaN(amount) || amount <= 0) {
+    alert("Enter a valid payment amount.");
+    return;
+  }
+
+  // Ensure not more than checking balance
+  if (amount > checkingBalance) {
+    alert(`You only have $${checkingBalance.toFixed(2)} available.`);
+    return;
+  }
+
+  // Optional: round to 2 decimals
+  amount = Math.round(amount * 100) / 100;
+
+  makePayment(amount);
+
+  // Clear input after payment
+  input.value = "";
+}
+
+function resetTimer(){
+    // Reset visual styles
+  timerEl.innerHTML = "⏸ Paused";
+  timerEl.style.backgroundColor = "#0f172a";
+  timerEl.style.color = "#e2e8f0";
+  timerEl.style.boxShadow = "none";
+  timerEl.style.transform = "scale(1)";
+  timerEl.style.animation = "none";
+}
+function applyLateFee(){
+  totalLateFees += 35;
+  balance += 35;
+  processMonth(0);
+  resetTimer()
+  lateModal.classList.add("show");
+}
+
+function continueAfterLate(){
+  lateModal.classList.remove("show");
+  nextTurn();
+}
+
+function processMonth(payment){
+  month++;
+
+  // 🔥 Apply payment first
+  balance -= payment;
+  if (balance < 0) balance = 0;
+
+  // Then apply interest only if balance remains
+  let interest = balance * rate;
+  totalInterest += interest;
+  balance += interest;
+
+  // Clamp tiny floating values
+  if (balance < 0.01) balance = 0;
+
+  months.push(month);
+  balanceData.push(balance);
+  interestData.push(totalInterest);
+  lateFeeData.push(totalLateFees);
+
+  chart.load({ columns: [months, balanceData, interestData, lateFeeData] });
+
+  updateStats();
+
+  if (balance === 0) {
+    gameOver = true;
+    buildWinSummary();   
+    showWinModal();      
+  }
+}
+function buildWinSummary() {
+  const summary = document.getElementById("winSummary");
+
+  summary.innerHTML = `
+    <strong>📊 Final Summary</strong><br><br>
+    
+    🗓 Months Taken: ${month}<br>
+    💳 Final Balance: $${balance.toFixed(2)}<br>
+    📈 Total Interest Paid: $${totalInterest.toFixed(2)}<br>
+    ⚠️ Total Late Fees: $${totalLateFees.toFixed(2)}<br>
+    🏦 Checking Balance: $${checkingBalance.toFixed(2)}<br>
+    <hr>
+  `;
+
+  let insight = "";
+
+  if (totalInterest > 200) {
+    insight = "⚠️ You paid a lot in interest.  Carrying a balance is expensive.";
+  } else {
+    insight = "👍 Great job minimizing interest costs!";
+  }
+  summary.innerHTML += `<br>${insight}`;
+  insight = ""
+  if (totalLateFees > 100) {
+    insight = "⚠️ You paid a lot in late fees.  Not make payments is costly.";
+  } else {
+    insight = "👍 Great job making payments each month!";
+  }
+  summary.innerHTML += `<br>${insight}`;
+}
+function showWinModal() {
+  winModal.classList.add("show");
+}
+function closeWinModal() {
+  winModal.classList.remove("show");
+}
+function updateStats(){
+  monthStat.innerHTML = `<strong>Month</strong><br>${month}`;
+  balanceStat.innerHTML = `<strong>Balance</strong><br>$${balance.toFixed(2)}`;
+  interestStat.innerHTML = `<strong>Interest</strong><br>$${totalInterest.toFixed(2)}`;
+  lateFeeStat.innerHTML = `<strong>Late Fees</strong><br>$${totalLateFees.toFixed(2)}`;
+  checkingStat.innerHTML = `<strong>Checking</strong><br>$${checkingBalance.toFixed(2)}`;
+}
+
+window.onload = function(){
+  initGame();
+}
+
+</script>
+
+</body>
+</html>
