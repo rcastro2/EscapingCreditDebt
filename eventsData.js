@@ -2,6 +2,20 @@
 
 let positiveEvents = [
   {
+    emoji: "🏡",
+    image: "inheritance.webp",
+    text: "Inheritance",
+    effect: 300,
+    scenario: "A relative left you an unexpected inheritance. You weren’t counting on it at all. This gives you a major financial boost and new opportunities."
+  },
+   {
+    emoji: "📈",
+    image: "investmentgain.jpg",
+    text: "Investment gain",
+    effect: 150,
+    scenario: "One of your investments performed better than expected. You decide to cash out part of the gains. The return gives your finances a noticeable boost."
+  },
+  {
     emoji: "💰",
     image: "bonuscheck.jpg",
     text: "Bonus paycheck",
@@ -53,6 +67,27 @@ let positiveEvents = [
 ];
 
 let negativeEvents = [
+   {
+    emoji: "📉",
+    image: "investmentloss.webp",
+    text: "Investment loss",
+    effect: -250,
+    scenario: "A risky investment didn’t go as planned. The value dropped significantly before you could react. You’re left absorbing a large loss."
+  },
+  {
+    emoji: "💻",
+    image: "laptoprepair.jpg",
+    text: "Laptop repair",
+    effect: -225,
+    scenario: "Your computer suddenly stopped working. Since you rely on it, you had to replace it quickly. The expense wasn’t planned and hits hard."
+  },
+  {
+    emoji: "⚖️",
+    image: "legalfees.jpeg",
+    text: "Legal fees",
+    effect: -175,
+    scenario: "You had to deal with an unexpected legal matter. Hiring help and handling paperwork comes with high costs. It puts a serious dent in your finances."
+  },
   {
     emoji: "🚓",
     image: "trafficviolation.jpg",
