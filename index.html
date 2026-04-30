@@ -302,6 +302,17 @@
       </div>
     </div>
     <div id="chart"></div>
+    <h3 style="margin-top:15px;">📜 Debt Journey</h3>
+
+    <div id="journeyLog" style="
+      max-height:200px;
+      overflow-y:auto;
+      background:#0f172a;
+      padding:10px;
+      border-radius:10px;
+      font-size:13px;
+      margin-top:10px;
+    "></div>
   </div>
 
 </div>
@@ -334,9 +345,12 @@ const event = document.getElementById("event");
 
 const lateModal = document.getElementById("lateModal");
 const winModal = document.getElementById("winModal");
+
+let debtJourney = [];
+
 function initGame() {
 
-  balance = 1000;
+  balance = 2026;
   rate = 0.24/12;
   month = 0;
 
@@ -476,7 +490,7 @@ function acknowledgeEvent() {
     eventScenario.innerHTML += `<div class="monthlyStatement">
                                   Monthly Income: $${monthlyIncome}<br>
                                   Monthly Event: ${currentEvent.effect >= 0 ? "+" : "-"}$${Math.abs(currentEvent.effect)}<br>
-                                  $${difference} was ${difference >=0? "added":"removed"} to your account.
+                                  $${Math.abs(difference)} was ${difference >=0? "added":"removed"} to your account.
                               </div>`;
                              
   }
@@ -603,6 +617,19 @@ function processMonth(payment){
   // Clamp tiny floating values
   if (balance < 0.01) balance = 0;
 
+  let lateFeeThisMonth = (payment === 0 && timer <= 0) ? 35 : 0;
+
+  debtJourney.push({
+    month: month,
+    event: currentEvent.text,
+    emoji: currentEvent.emoji,
+    eventEffect: currentEvent.effect,
+    payment: payment,
+    interest: interest,
+    lateFee: lateFeeThisMonth,
+    balance: balance
+  });
+
   months.push(month);
   balanceData.push(balance);
   interestData.push(totalInterest);
@@ -614,9 +641,38 @@ function processMonth(payment){
 
   if (balance === 0) {
     gameOver = true;
-    buildWinSummary();   
+    buildWinSummary();  
+    renderJourneyLog(); 
     showWinModal();      
   }
+}
+function renderJourneyLog() {
+  const log = document.getElementById("journeyLog");
+
+  log.innerHTML = debtJourney.map(step => {
+    let eventColor =
+      step.eventEffect > 0 ? "#22c55e" :
+      step.eventEffect < 0 ? "#ef4444" :
+      "#64748b";
+
+    return `
+      <div style="margin-bottom:10px; padding-bottom:8px; border-bottom:1px solid #334155;">
+        <strong>Month ${step.month}</strong> ${step.emoji} ${step.event}<br>
+
+        Event:
+        <span style="color:${eventColor}">
+          ${step.eventEffect >= 0 ? "+" : ""}$${step.eventEffect}
+        </span><br>
+
+        Payment: $${step.payment.toFixed(2)}<br>
+        Interest: +$${step.interest.toFixed(2)}<br>
+        Balance: <strong>$${step.balance.toFixed(2)}</strong>
+      </div>
+    `;
+  }).join("");
+
+  // 🔥 Auto-scroll to newest entry
+  log.scrollTop = log.scrollHeight;
 }
 function buildWinSummary() {
   const summary = document.getElementById("winSummary");
