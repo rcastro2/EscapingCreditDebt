@@ -258,6 +258,10 @@
     50%  { box-shadow: 0 0 20px rgba(14,165,233,0.9); }
     100% { box-shadow: 0 0 0px rgba(14,165,233,0.6); }
   }
+  /* Use in start screen */
+  ul > li {
+    margin-bottom: 10px; /* adjust spacing as needed */
+  }
 
   </style>
 </head>
@@ -280,29 +284,39 @@
     <div style="flex:1; display:flex; flex-direction:column; justify-content:space-between;">
       
       <div>
-        <h2>💳 Escape from Credit Debt</h2>
+        <!-- <h2>💳 Escape from Credit Debt</h2> -->
 
         <p>
-          You start with credit card debt and a small monthly income.
-          Each month, life happens—sometimes good, sometimes expensive.
+          Each month, you’ll earn income, face unexpected events, and decide how much to pay toward your credit card.
         </p>
 
         <p>
-          Your goal: <strong>pay off your balance before it spirals out of control.</strong>
+          Your goal: <strong>pay off your balance before interest and fees take over.</strong>
         </p>
 
         <hr>
 
         <strong>How to Play:</strong>
         <ul>
-          <li>Each month brings a random event</li>
-          <li>You earn income and manage expenses</li>
-          <li>Decide how much to pay toward your debt</li>
-          <li>Miss the deadline → late fee</li>
+          <li>You earn <strong>$150 income each month</strong></li>
+          <li>Your credit card charges <strong>24% annual interest</strong></li>
+          
+          <li>Each month, an event will impact your finances (good or bad)</li>
+          
+          <li>Expenses are paid automatically using:
+            <ol>
+              <li>this month’s income</li>
+              <li>your checking account balance</li>
+              <li>your credit card (if needed)</li>
+            </ol>
+          </li>
+
+          <li>You choose how much to pay toward your credit card each month</li>
+          <li>Miss the payment window and you’ll be charged a <strong>$35 late fee</strong></li>
         </ul>
 
         <p>
-          ⚠️ Interest is added every month. Small balances grow fast.
+          ⚠️ <strong>Warning:</strong> Interest is added every month. Even small balances can grow quickly.
         </p>
       </div>
 
@@ -386,19 +400,13 @@
   <div class="left-panel">
     <div class="stat" id="monthStat"></div>
     <div class="stat" id="balanceStat"></div>
-    <div class="stat" id="interestStat"></div>
-    <div class="stat" id="lateFeeStat"></div>
-    <div class="stat" id="checkingStat"></div>
-
     <hr>
+    <div class="stat" id="checkingStat"></div>
     <div id="paymentControls">
       <button onclick="makePayment(25)">Pay Minimum</button>
       <!-- <button onclick="makePayment(50)">Pay $50</button> -->
       <button onclick="makePayment(100)">Pay $100</button>
-      <hr>
-      <!-- <button onclick="payFullBalance()" style="background:#ef4444; color:white;">
-    Pay Full Balance
-  </button> -->
+    
       <input 
         type="number" 
         id="customAmount" 
@@ -429,6 +437,10 @@
       </div>
     </div>
     <div id="chart"></div>
+    <div style="display:flex">
+    <div class="stat" id="interestStat" style="flex:1;margin:0 10px"></div>
+    <div class="stat" id="lateFeeStat" style="flex:1;margin:0 10px"></div>
+    </div>
     <div id="finalSummary"></div>
   </div>
 
@@ -580,7 +592,8 @@ function showScenarioModal() {
 function acknowledgeEvent() {
   scenarioModal.classList.remove("show");
   let insufficientFunds = false;
-  let remaining = 0
+  let remaining = 0;
+  let removeFromAccount = 0;
 
   if (currentEvent.effect >= 0) {
     // Positive event → goes to checking
@@ -594,6 +607,7 @@ function acknowledgeEvent() {
       checkingBalance -= cost;
     } else {
       // Partially covered → remainder goes to credit card
+      removeFromAccount = checkingBalance - 150;
       remaining = cost - checkingBalance;
       checkingBalance = 0;
       balance += remaining; // 👈 add to credit card debt
@@ -611,21 +625,24 @@ function acknowledgeEvent() {
                              </strong><br>
                              ${currentEvent.scenario}<hr>
                              `;
+  let difference = monthlyIncome + currentEvent.effect;
+  let msg = "";
+  
   if(insufficientFunds){
-    eventScenario.innerHTML += `<div id="insufficientFundsMSG"> 
-                                  💥Insufficient funds in the account to cover  
-                                  "${currentEvent.text}".  Credit card was charged 
-                                  the difference of $${remaining}.      
-                                </div>`
+    if(removeFromAccount != 0){
+      msg = `$${removeFromAccount} was removed from your account.`
+    }
+    msg += `💥Insufficient funds to cover "${currentEvent.text}".  
+           Credit card was charged the difference of $${remaining}.`
   }else{
-    let difference = monthlyIncome + currentEvent.effect;
-    eventScenario.innerHTML += `<div class="monthlyStatement">
-                                  Monthly Income: $${monthlyIncome}<br>
-                                  Monthly Event: ${currentEvent.effect >= 0 ? "+" : "-"}$${Math.abs(currentEvent.effect)}<br>
-                                  $${Math.abs(difference)} was ${difference >=0? "added":"removed"} to your account.
-                              </div>`;
-                             
+    msg = `$${Math.abs(difference)} was ${difference >=0? "added to":"removed from"} your account.`
   }
+  eventScenario.innerHTML += `<div class="monthlyStatement">
+                                Monthly Income: $${monthlyIncome}<br>
+                                Monthly Event: ${currentEvent.effect >= 0 ? "+" : "-"}$${Math.abs(currentEvent.effect)}<br>
+                                ${msg}
+                            </div>`;
+  
   updateStats();
   resetTimer();
   setPaymentControls(false); 
@@ -633,7 +650,7 @@ function acknowledgeEvent() {
 }
 
 function startTimer() {
-  timer = 24;
+  timer = 34;
   //updateTimer();
 
   clearInterval(timerInterval);
@@ -642,11 +659,11 @@ function startTimer() {
     timer--;
  
 
-    if (timer === 20) {
+    if (timer === 30) {
       setPaymentControls(true);
     }
-    if (timer >= 20) {
-      timerEl.innerHTML = `🧠 Review your situation... (${timer-20})`;
+    if (timer >= 31) {
+      timerEl.innerHTML = `🧠 Review your situation... (${timer-30})`;
     } else{
       updateTimer();
     }
@@ -659,7 +676,7 @@ function startTimer() {
 }
 
 function updateTimer() {
-  timerEl.innerHTML = `⏳ Time: <strong>${timer}</strong>`;
+  timerEl.innerHTML = `⏳ Credit Card Payment Due: <strong>${timer} days</strong>`;
 
   const maxTime = 30; // starting time
   const ratio = timer / maxTime; // 1 → 0
@@ -684,18 +701,34 @@ function updateTimer() {
   }
 }
 
+
+
 function makePayment(amount){
   if(gameOver) return;
-  if(amount>checkingBalance){ 
-    showToast(`You only have $${checkingBalance.toFixed(2)} available.`);
-    return;
+
+  if(amount > checkingBalance){ 
+    showToast(`You only have $${checkingBalance.toFixed(2)} available.`,`error`);
+    return; 
   }
 
   clearInterval(timerInterval);
+
+  // 🔥 Check minimum BEFORE processing
+  const minimumDue = 25; //Math.min(Math.max(balance * 0.02, 25), balance);
+
+  if (amount < minimumDue) {
+    showToast(
+      `Minimum payment is $${minimumDue.toFixed(2)}. Paying less will result in a late fee.`,
+      `error`
+    );
+    return;
+  }
+
+  // ✅ Normal payment path
   checkingBalance -= amount;
   processMonth(amount);
 
-  setTimeout(nextTurn,800);
+  setTimeout(nextTurn, 800);
 }
 
 function setPaymentControls(enabled) {
@@ -743,12 +776,16 @@ function resetTimer(){
   timerEl.style.transform = "scale(1)";
   timerEl.style.animation = "none";
 }
-function applyLateFee(){
+function applyLateFee(triggerModal = true){
   totalLateFees += 35;
   balance += 35;
+
   processMonth(0);
-  resetTimer()
-  lateModal.classList.add("show");
+  resetTimer();
+
+  if (triggerModal) {
+    lateModal.classList.add("show");
+  }
 }
 
 function continueAfterLate(){
@@ -771,7 +808,8 @@ function processMonth(payment){
   // Clamp tiny floating values
   if (balance < 0.01) balance = 0;
 
-  let lateFeeThisMonth = (payment === 0 && timer <= 0) ? 35 : 0;
+  let lateFeeThisMonth = (payment < 25 || timer <= 0) ? 35 : 0;
+  if(lateFeeThisMonth) timer = 1;
 
   debtJourney.push({
     month: month,
@@ -799,6 +837,7 @@ function processMonth(payment){
     showWinModal();  
     document.getElementById("viewJourneyContainer").style.display = "block";    
   }
+  
 }
 
 function showToast(message, type = "info") {
@@ -918,10 +957,10 @@ function closeWinModal() {
 }
 function updateStats(){
   monthStat.innerHTML = `<strong>Month</strong><br>${month}`;
-  balanceStat.innerHTML = `<strong>Balance</strong><br>$${balance.toFixed(2)}`;
-  interestStat.innerHTML = `<strong>Interest</strong><br>$${totalInterest.toFixed(2)}`;
-  lateFeeStat.innerHTML = `<strong>Late Fees</strong><br>$${totalLateFees.toFixed(2)}`;
-  checkingStat.innerHTML = `<strong>Checking</strong><br>$${checkingBalance.toFixed(2)}`;
+  balanceStat.innerHTML = `<strong>Credit Card Balance</strong><br>$${balance.toFixed(2)}`;
+  interestStat.innerHTML = `<strong>Accured Interest</strong> $${totalInterest.toFixed(2)}`;
+  lateFeeStat.innerHTML = `<strong>Accured Late Fees</strong> $${totalLateFees.toFixed(2)}`;
+  checkingStat.innerHTML = `<strong>Checking Account Balance</strong><br>$${checkingBalance.toFixed(2)}`;
 }
 
 window.onload = function(){
