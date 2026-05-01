@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Credit Card Trap Game</title>
+  <title>Escape from Credit Debt</title>
 
   <!-- Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
@@ -199,7 +199,7 @@
   /* Pulse animation */
   @keyframes pulse {
     0% { transform: scale(1); }
-    50% { transform: scale(1.08); }
+    50% { transform: scale(1.02); }
     100% { transform: scale(1); }
   }
   input[type="number"] {
@@ -211,17 +211,112 @@
     border: none;
     box-sizing: border-box; /* 🔥 key fix */
   }
+  #toastContainer {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .toast {
+    padding: 12px 16px;
+    margin-top: 10px;
+    border-radius: 8px;
+    color: white;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    font-size: 18px;
+
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+    transition: all 0.3s ease;
+
+    /* max-width: 300px;
+    text-align: center; */
+  }
+
+  /* Variants */
+  .toast.info { background: #3b82f6; }
+  .toast.error { background: #ef4444; }
+  .toast.success { background: #22c55e; }
+
+  /* Visible state */
+  .toast.show {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  #viewJourneyContainer button {
+    position: relative;
+    animation: journeyPulse 1s infinite;
+  }
+  @keyframes journeyPulse {
+    0%   { box-shadow: 0 0 0px rgba(14,165,233,0.6); }
+    50%  { box-shadow: 0 0 20px rgba(14,165,233,0.9); }
+    100% { box-shadow: 0 0 0px rgba(14,165,233,0.6); }
+  }
+
   </style>
 </head>
 <body>
 
-<h1>💳 Escape the Credit Card Trap</h1>
+<h1 id="title" style="display:none">💳 Escape from Credit Debt</h1>
 
+<div id="toastContainer"></div>
 
 <!-- Modals -->
+ <div id="startModal" class="modal show" style="background-color: #0f172a;">
+  <div class="modal-content" style="width:800px; display:flex; gap:20px; text-align:left;">
+
+    <!-- LEFT: IMAGE -->
+    <div style="flex:1;">
+      <img src="images/creditdebt.png" style="width:100%; border-radius:10px;">
+    </div>
+
+    <!-- RIGHT: TEXT -->
+    <div style="flex:1; display:flex; flex-direction:column; justify-content:space-between;">
+      
+      <div>
+        <h2>💳 Escape from Credit Debt</h2>
+
+        <p>
+          You start with credit card debt and a small monthly income.
+          Each month, life happens—sometimes good, sometimes expensive.
+        </p>
+
+        <p>
+          Your goal: <strong>pay off your balance before it spirals out of control.</strong>
+        </p>
+
+        <hr>
+
+        <strong>How to Play:</strong>
+        <ul>
+          <li>Each month brings a random event</li>
+          <li>You earn income and manage expenses</li>
+          <li>Decide how much to pay toward your debt</li>
+          <li>Miss the deadline → late fee</li>
+        </ul>
+
+        <p>
+          ⚠️ Interest is added every month. Small balances grow fast.
+        </p>
+      </div>
+
+      <button onclick="startGame()" style="background:#22c55e;">
+        ▶ Start Game
+      </button>
+
+    </div>
+  </div>
+</div>
+
 <div id="winModal" class="modal">
   <div class="modal-content">
-    <h2>🎉 You Escaped the Credit Card Trap!</h2>
+    <h2>🎉 You Escaped from Credit Debt!</h2>
     <p>Great job! You paid off your balance.</p>
     <div id="winSummary" style="
       text-align:left;
@@ -235,6 +330,30 @@
     <button onclick="closeWinModal()" style="background:#64748b;">
       Close
     </button>
+  </div>
+</div>
+<div id="journeyModal" class="modal">
+  <div class="modal-content" style="width:1000px; max-height:80vh; overflow:hidden; display:flex; flex-direction:column;">
+    
+    <h2>📜 Journey Out Of Credit Debt</h2>
+
+    <div id="journeyModalLog" style="
+      display:grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap:10px;
+      overflow-y:auto;
+      background:#0f172a;
+      padding:15px;
+      border-radius:10px;
+      text-align:left;
+      font-size:12px;
+      margin-top:10px;
+    "></div>
+
+    <button onclick="closeJourneyModal()" style="margin-top:15px;">
+      Close
+    </button>
+
   </div>
 </div>
 <div id="scenarioModal" class="modal">
@@ -272,25 +391,33 @@
     <div class="stat" id="checkingStat"></div>
 
     <hr>
+    <div id="paymentControls">
+      <button onclick="makePayment(25)">Pay Minimum</button>
+      <!-- <button onclick="makePayment(50)">Pay $50</button> -->
+      <button onclick="makePayment(100)">Pay $100</button>
+      <hr>
+      <!-- <button onclick="payFullBalance()" style="background:#ef4444; color:white;">
+    Pay Full Balance
+  </button> -->
+      <input 
+        type="number" 
+        id="customAmount" 
+        placeholder="Enter custom amount"
+        min="1"
+      >
 
-    <button onclick="makePayment(25)">Pay Minimum</button>
-    <!-- <button onclick="makePayment(50)">Pay $50</button> -->
-    <button onclick="makePayment(100)">Pay $100</button>
-    <hr>
-    <!-- <button onclick="payFullBalance()" style="background:#ef4444; color:white;">
-  Pay Full Balance
-</button> -->
-    <input 
-      type="number" 
-      id="customAmount" 
-      placeholder="Enter custom amount"
-      min="1"
-    >
-
-    <button onclick="handleCustomPayment()" style="background:#8b5cf6; color:white;">
-      Pay Custom Amount
-    </button>
+      <button onclick="handleCustomPayment()" style="background:#8b5cf6; color:white;">
+        Pay Custom Amount
+      </button>
+    </div>
+    <div id="viewJourneyContainer" style="display:none;">
+      <hr>
+      <button onclick="openJourneyModal()" style="background:#0ea5e9; color:white;">
+        📜 View Debt Journey
+      </button>
+    </div>
   </div>
+
 
   <!-- RIGHT PANEL -->
   <div class="right-panel">
@@ -302,17 +429,7 @@
       </div>
     </div>
     <div id="chart"></div>
-    <h3 style="margin-top:15px;">📜 Debt Journey</h3>
-
-    <div id="journeyLog" style="
-      max-height:200px;
-      overflow-y:auto;
-      background:#0f172a;
-      padding:10px;
-      border-radius:10px;
-      font-size:13px;
-      margin-top:10px;
-    "></div>
+    <div id="finalSummary"></div>
   </div>
 
 </div>
@@ -325,6 +442,8 @@ let timer, timerInterval, gameOver, currentEvent;
 
 let chart;
 let months, balanceData, interestData, lateFeeData;
+const title = document.getElementById("title");
+
 const eventEmoji = document.getElementById("eventEmoji");
 const eventScenario = document.getElementById("eventScenario");
 const timerEl = document.getElementById("timer");
@@ -345,8 +464,24 @@ const event = document.getElementById("event");
 
 const lateModal = document.getElementById("lateModal");
 const winModal = document.getElementById("winModal");
+const journeyModal = document.getElementById("journeyModal");
+const startModal = document.getElementById("startModal");
+
+const paymentControls = document.getElementById("paymentControls");
+const finalSummary = document.getElementById("finalSummary");
 
 let debtJourney = [];
+
+function startGame() {
+  title.style.display = "block"
+  timerEl.innerHTML = "⏳ Preparing your first month...";
+  startModal.classList.remove("show");
+
+  // 🔥 2-second delay before first event
+  setTimeout(() => {
+    nextTurn();
+  }, 2000);
+}
 
 function initGame() {
 
@@ -403,7 +538,6 @@ function initGame() {
   });
 
   updateStats();
-  nextTurn();
 }
 
 function nextTurn() {
@@ -440,7 +574,7 @@ function showScenarioModal() {
     btn.innerText = "Continue";
     btn.style.backgroundColor =  "#22c55e";
     btn.disabled = false;
-  }, 5000);
+  }, 2000);
 }
 
 function acknowledgeEvent() {
@@ -471,8 +605,6 @@ function acknowledgeEvent() {
     : currentEvent.effect < 0 ? "#ef4444"
     : "#64748b";
 
-  eventContainer.style.borderLeft = `10px solid ${borderColor}`;
-
   eventEmoji.innerHTML = currentEvent.emoji;
   eventScenario.innerHTML = `<strong>${currentEvent.text}
                                     (${currentEvent.effect >= 0 ? "+" : "-"}$${Math.abs(currentEvent.effect)})
@@ -481,7 +613,7 @@ function acknowledgeEvent() {
                              `;
   if(insufficientFunds){
     eventScenario.innerHTML += `<div id="insufficientFundsMSG"> 
-                                  Insufficient funds in the account to cover  
+                                  💥Insufficient funds in the account to cover  
                                   "${currentEvent.text}".  Credit card was charged 
                                   the difference of $${remaining}.      
                                 </div>`
@@ -495,19 +627,29 @@ function acknowledgeEvent() {
                              
   }
   updateStats();
-  resetTimer()
+  resetTimer();
+  setPaymentControls(false); 
   startTimer();
 }
 
 function startTimer() {
-  timer = 20;
-  updateTimer();
+  timer = 24;
+  //updateTimer();
 
   clearInterval(timerInterval);
 
   timerInterval = setInterval(()=>{
     timer--;
-    updateTimer();
+ 
+
+    if (timer === 20) {
+      setPaymentControls(true);
+    }
+    if (timer >= 20) {
+      timerEl.innerHTML = `🧠 Review your situation... (${timer-20})`;
+    } else{
+      updateTimer();
+    }
 
     if(timer<=0){
       clearInterval(timerInterval);
@@ -544,13 +686,25 @@ function updateTimer() {
 
 function makePayment(amount){
   if(gameOver) return;
-  if(amount>checkingBalance){ alert("Not enough money!"); return; }
+  if(amount>checkingBalance){ 
+    showToast(`You only have $${checkingBalance.toFixed(2)} available.`);
+    return;
+  }
 
   clearInterval(timerInterval);
   checkingBalance -= amount;
   processMonth(amount);
 
   setTimeout(nextTurn,800);
+}
+
+function setPaymentControls(enabled) {
+  const controls = document.querySelectorAll("#paymentControls button, #paymentControls input");
+      
+  document.getElementById("paymentControls").style.opacity = (enabled?1:0.5);
+  controls.forEach(el => {
+    el.disabled = !enabled;
+  });
 }
 
 function handleCustomPayment() {
@@ -561,13 +715,13 @@ function handleCustomPayment() {
 
   // Basic validation
   if (isNaN(amount) || amount <= 0) {
-    alert("Enter a valid payment amount.");
+    showToast("Enter a valid payment amount", "error");
     return;
   }
 
   // Ensure not more than checking balance
   if (amount > checkingBalance) {
-    alert(`You only have $${checkingBalance.toFixed(2)} available.`);
+    showToast(`You only have $${checkingBalance.toFixed(2)} available.`);
     return;
   }
 
@@ -642,38 +796,89 @@ function processMonth(payment){
   if (balance === 0) {
     gameOver = true;
     buildWinSummary();  
-    renderJourneyLog(); 
-    showWinModal();      
+    showWinModal();  
+    document.getElementById("viewJourneyContainer").style.display = "block";    
   }
 }
-function renderJourneyLog() {
-  const log = document.getElementById("journeyLog");
+
+function showToast(message, type = "info") {
+  const toast = document.createElement("div");
+
+  toast.className = `toast ${type}`;
+  toast.innerText = message;
+
+  document.getElementById("toastContainer").appendChild(toast);
+
+  setTimeout(() => toast.classList.add("show"), 10);
+
+  setTimeout(() => {
+    toast.classList.remove("show");
+    setTimeout(() => toast.remove(), 300);
+  }, 2500);
+}
+
+function openJourneyModal() {
+  buildJourneyModal(); // render fresh data
+  journeyModal.classList.add("show");
+}
+
+function closeJourneyModal() {
+  journeyModal.classList.remove("show");
+}
+
+function buildJourneyModal() {
+  const log = document.getElementById("journeyModalLog");
 
   log.innerHTML = debtJourney.map(step => {
-    let eventColor =
+    let color =
       step.eventEffect > 0 ? "#22c55e" :
       step.eventEffect < 0 ? "#ef4444" :
       "#64748b";
 
+    let bg =
+      step.eventEffect < 0 || step.lateFee > 0
+        ? "rgba(239,68,68,0.08)"
+        : "rgba(34,197,94,0.05)";
+
+    let late = step.lateFee > 0
+      ? `<div style="color:#f87171;">⚠️ Late</div>`
+      : "";
+
     return `
-      <div style="margin-bottom:10px; padding-bottom:8px; border-bottom:1px solid #334155;">
-        <strong>Month ${step.month}</strong> ${step.emoji} ${step.event}<br>
+      <div style="
+        background:${bg};
+        border-left:4px solid ${color};
+        border-radius:10px;
+        padding:8px;
+        font-size:12px;
+      ">
+        <strong>Month ${step.month}</strong><br>
+        <div style="font-size:18px;">${step.emoji}</div>
 
-        Event:
-        <span style="color:${eventColor}">
-          ${step.eventEffect >= 0 ? "+" : ""}$${step.eventEffect}
-        </span><br>
+        <div style="margin-top:4px;">
+          ${step.event}
+        </div>
 
-        Payment: $${step.payment.toFixed(2)}<br>
-        Interest: +$${step.interest.toFixed(2)}<br>
-        Balance: <strong>$${step.balance.toFixed(2)}</strong>
+        <div style="margin-top:6px;">
+          <span style="color:${color}">
+            ${step.eventEffect >= 0 ? "+" : ""}$${step.eventEffect}
+          </span>
+        </div>
+
+        <div>💵 $${step.payment.toFixed(2)}</div>
+        <div>📈 $${step.interest.toFixed(2)}</div>
+
+        <div style="margin-top:4px;">
+          <strong>💳  $${step.balance.toFixed(2)}</strong>
+        </div>
+
+        ${late}
       </div>
     `;
   }).join("");
-
-  // 🔥 Auto-scroll to newest entry
-  log.scrollTop = log.scrollHeight;
 }
+
+
 function buildWinSummary() {
   const summary = document.getElementById("winSummary");
 
@@ -709,6 +914,7 @@ function showWinModal() {
 }
 function closeWinModal() {
   winModal.classList.remove("show");
+  showToast("Review your decisions in the Debt Journey 📜", "success");
 }
 function updateStats(){
   monthStat.innerHTML = `<strong>Month</strong><br>${month}`;
