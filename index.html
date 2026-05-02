@@ -166,10 +166,42 @@
     font-size: 16px;
     font-weight: 600;
   }
+  /* Tooltip container */
+  .c3-tooltip {
+    background: white !important;
+    color: black !important;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+  }
+
+  /* Tooltip text */
+  .c3-tooltip td {
+    color: black !important;
+  }
+
+  /* Tooltip header (like "Month 3") */
+  .c3-tooltip th {
+    color: black !important;
+  }
+
+  /* Optional: improve readability */
+  .c3-tooltip td, 
+  .c3-tooltip th {
+    font-size: 13px;
+  }
+  .c3-tooltip {
+    background: #f8fafc !important; /* soft gray */
+    color: #0f172a !important;
+    border-radius: 8px;
+    border: 1px solid #cbd5f5;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+  }
   .fit{
     width:250px;
     height:200px;
     object-fit:cover;
+    border-radius:4px;
+    box-shadow: 2px 2px 2px black;
   }
   /* Base timer */
   #timer {
@@ -565,6 +597,19 @@ function initGame() {
     axis: {
       x: { label: 'Month' },
       y: {}
+    },
+    tooltip: {
+      format: {
+        title: function (x) {
+          return `📅 Month ${x}`;
+        },
+        value: function (value) {
+          return `$${value.toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+          })}`;
+        }
+      }
     },
     point: { show: false },
     legend: { position: 'right' },
