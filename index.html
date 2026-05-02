@@ -264,6 +264,16 @@
     margin-bottom: 10px; /* adjust spacing as needed */
   }
 
+  #payFullBtn {
+    animation: glow 1.2s infinite;
+  }
+
+  @keyframes glow {
+    0% { box-shadow: 0 0 0px rgba(16,185,129,0.6); }
+    50% { box-shadow: 0 0 15px rgba(16,185,129,0.9); }
+    100% { box-shadow: 0 0 0px rgba(16,185,129,0.6); }
+  }
+
   </style>
 </head>
 <body>
@@ -275,8 +285,12 @@
 <!-- Modals -->
   <div id="messageModal" class="modal">
     <div class="modal-content" style="max-width:400px;">
-      <h3 id="messageTitle"></h3>
-      <p id="messageText"></p>
+      <h3 id="messageTitle" style="font-size:18pt"></h3>
+      <div style="display:flex">
+        <div id="messageEmoji" style="font-size:40pt;padding-top: 20px;"></div>
+        <p id="messageText" style="font-size:16pt;flex:1"></p>
+      </div>
+      
       <button onclick="closeMessageModal()">OK</button>
     </div>
 </div>
@@ -395,9 +409,9 @@
 </div>
 
 <div id="lateModal" class="modal">
-  <div class="modal-content">
-    <h3>⏰ Late Payment</h3>
-    <p>A $35 late fee has been added.</p>
+  <div class="modal-content" style="font-size:18pt">
+    <h3 style="font-size:18pt">⏰ Late Payment</h3>
+    <p style="font-size:16pt">A $35 late fee has been added.</p>
     <button onclick="continueAfterLate()">Continue</button>
   </div>
 </div>
@@ -424,6 +438,9 @@
 
       <button onclick="handleCustomPayment()" style="background:#8b5cf6; color:white;">
         Pay Custom Amount
+      </button>
+      <button id="payFullBtn" onclick="payInFull()" style="display:none; background-color:brown; color:white;">
+        💳 Pay In Full
       </button>
     </div>
     <div id="viewJourneyContainer" style="display:none;">
@@ -462,6 +479,9 @@ let timer, timerInterval, gameOver, currentEvent;
 
 let chart;
 let months, balanceData, interestData, lateFeeData;
+let canPayFullLast = false;
+let zeroBalanceCount = 0;
+
 const title = document.getElementById("title");
 
 const eventEmoji = document.getElementById("eventEmoji");
@@ -490,6 +510,7 @@ const startModal = document.getElementById("startModal");
 const messageModal = document.getElementById("messageModal");
 const messageTitle = document.getElementById("messageTitle");
 const messageText = document.getElementById("messageText");
+const messageEmoji = document.getElementById("messageEmoji");
 
 const paymentControls = document.getElementById("paymentControls");
 const finalSummary = document.getElementById("finalSummary");
@@ -574,7 +595,9 @@ function nextTurn() {
 
 function getRandomEvent() {
   let roll = Math.random();
-  if (roll < 0.2) return { emoji:"😌", image:"noevent.avif",text:"No event", effect:0, scenario:"Nothing happens." };
+  if (roll < 0.1) return { emoji:"😌", image:"noevent.avif",text:"No event", effect:0, 
+                           scenario:`Sometimes the best months are the ones where nothing happens. Take this opportunity to get ahead on payments inorder to decrease your credit card debt.`
+                         };
   let list = roll < 0.5 ? positiveEvents : negativeEvents;
   return list[Math.floor(Math.random()*list.length)];
 }
@@ -582,7 +605,7 @@ function getRandomEvent() {
 function showScenarioModal() {
   resetTimer();
   modalMonth.innerText = "Month " + (month+1);
-  modalTitle.innerText = `${currentEvent.emoji} ${currentEvent.text} ($${currentEvent.effect})`;
+  modalTitle.innerText = `${currentEvent.emoji} ${currentEvent.text} (${currentEvent.effect >= 0 ? "+" : "-"}$${Math.abs(currentEvent.effect)})`;
   modalScenario.innerText = currentEvent.scenario;
   modalImage.src = `images/${currentEvent.image}`;
   const btn = document.getElementById("continueButton");
@@ -601,6 +624,20 @@ function showScenarioModal() {
   }, 2000);
 }
 
+let zeroBalanceNotifications = [
+  {emoji:"💡",
+  msg:`Though it is wise to pay off high interest balances, ensure you maintain enough funds to
+  make monthly minimum payments.<br>  Late fees are costly!`
+  },
+  {emoji:"ℹ️",
+  msg:`Sometimes life throws you curve balls that significantly decrease your funds.  Attempt to retain
+  emergency funds for such situations.<br> Late fees are costly!`
+  },
+  {emoji:"⚠️",
+  msg:`Zero balance means you won't be able to make the minimum payment!  Late fees can significantly 
+  increase your credit debt just like high interest`
+  }
+]
 function acknowledgeEvent() {
   scenarioModal.classList.remove("show");
   let insufficientFunds = false;
@@ -650,8 +687,10 @@ function acknowledgeEvent() {
     msg = `$${Math.abs(difference)} was ${difference >=0? "added to":"removed from"} your account.`
   }
   if(checkingBalance == 0){
-    showMessage("Zero Balance",`💡 Though it is wise to pay off high interest balances, ensure you maintain enough funds to
-             make monthly minimum payments.  Late fees are costly!`)
+    let notification = zeroBalanceNotifications[zeroBalanceCount]
+    zeroBalanceCount += (zeroBalanceCount >= 2) ? 0 : 1;
+    showMessage("Zero Balance",notification.msg,notification.emoji);
+    
   }
   eventScenario.innerHTML += `<div class="monthlyStatement">
                                 Monthly Income: $${monthlyIncome}<br>
@@ -744,6 +783,21 @@ function makePayment(amount){
   clearInterval(timerInterval);
 
   checkingBalance -= amount;
+  processMonth(amount);
+
+  setTimeout(nextTurn, 800);
+}
+
+function payInFull(){
+  if(gameOver) return;
+
+  if (checkingBalance < balance) return; // safety check
+
+  clearInterval(timerInterval);
+
+  const amount = balance; // full payoff
+  checkingBalance -= amount;
+
   processMonth(amount);
 
   setTimeout(nextTurn, 800);
@@ -856,9 +910,10 @@ function processMonth(payment){
   }
   
 }
-function showMessage(title, text) {
+function showMessage(title, text, emoji = "") {
   messageTitle.innerText = title;
-  messageText.innerText = text;
+  messageText.innerHTML = text;
+  messageEmoji.innerText = emoji;
   messageModal.classList.add("show");
 }
 
@@ -972,7 +1027,7 @@ function buildWinSummary() {
   summary.innerHTML += `<br>${insight}`;
   insight = ""
   if (totalLateFees > 100) {
-    insight = "⚠️ You paid a lot in late fees.  Not make payments is costly.";
+    insight = "⚠️ You paid a lot in late fees.  Not making payments is costly.";
   } else {
     insight = "👍 Great job making payments each month!";
   }
@@ -991,6 +1046,22 @@ function updateStats(){
   interestStat.innerHTML = `<strong>Accured Interest</strong> $${totalInterest.toFixed(2)}`;
   lateFeeStat.innerHTML = `<strong>Accured Late Fees</strong> $${totalLateFees.toFixed(2)}`;
   checkingStat.innerHTML = `<strong>Checking Account Balance</strong><br>$${checkingBalance.toFixed(2)}`;
+
+  const payFullBtn = document.getElementById("payFullBtn");
+
+  if (checkingBalance >= balance && balance > 0) {
+    payFullBtn.style.display = "block";
+  } else {
+    payFullBtn.style.display = "none";
+  }
+
+  const canPayFullNow = checkingBalance >= balance && balance > 0;
+
+  if (canPayFullNow && !canPayFullLast) {
+    showToast("💡 You can pay off your balance in full!", "success");
+  }
+
+  canPayFullLast = canPayFullNow;
 }
 
 window.onload = function(){
