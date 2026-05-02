@@ -513,6 +513,9 @@ let chart;
 let months, balanceData, interestData, lateFeeData;
 let canPayFullLast = false;
 let zeroBalanceCount = 0;
+let lastEvent = null;
+
+let debtJourney = [];
 
 const title = document.getElementById("title");
 
@@ -547,8 +550,6 @@ const messageEmoji = document.getElementById("messageEmoji");
 const paymentControls = document.getElementById("paymentControls");
 const finalSummary = document.getElementById("finalSummary");
 
-let debtJourney = [];
-
 function startGame() {
   title.style.display = "block"
   timerEl.innerHTML = "⏳ Preparing your first month...";
@@ -563,7 +564,7 @@ function startGame() {
 function initGame() {
 
   balance = 2026;
-  rate = 0.24/12;
+  rate = 0.22/12;
   month = 0;
 
   totalInterest = 0;
@@ -613,7 +614,7 @@ function initGame() {
     },
     point: { show: false },
     legend: { position: 'right' },
-    title: { text: 'Debt Growth' },
+    title: { text: 'Credit Card Debt' },
     grid: {
       y: {
         show: true
@@ -644,7 +645,15 @@ function getRandomEvent() {
                            scenario:`Sometimes the best months are the ones where nothing happens. Take this opportunity to get ahead on payments inorder to decrease your credit card debt.`
                          };
   let list = roll < 0.5 ? positiveEvents : negativeEvents;
-  return list[Math.floor(Math.random()*list.length)];
+  let event;
+
+  // 🔁 Keep picking until it's NOT the same as last time
+  do {
+    event = list[Math.floor(Math.random()*list.length)];
+  } while (lastEvent && event.text === lastEvent.text);
+
+  lastEvent = event; // remember it
+  return event;
 }
 
 function showScenarioModal() {
