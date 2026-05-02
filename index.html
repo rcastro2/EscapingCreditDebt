@@ -258,6 +258,7 @@
     50%  { box-shadow: 0 0 20px rgba(14,165,233,0.9); }
     100% { box-shadow: 0 0 0px rgba(14,165,233,0.6); }
   }
+
   /* Use in start screen */
   ul > li {
     margin-bottom: 10px; /* adjust spacing as needed */
@@ -272,6 +273,13 @@
 <div id="toastContainer"></div>
 
 <!-- Modals -->
+  <div id="messageModal" class="modal">
+    <div class="modal-content" style="max-width:400px;">
+      <h3 id="messageTitle"></h3>
+      <p id="messageText"></p>
+      <button onclick="closeMessageModal()">OK</button>
+    </div>
+</div>
  <div id="startModal" class="modal show" style="background-color: #0f172a;">
   <div class="modal-content" style="width:800px; display:flex; gap:20px; text-align:left;">
 
@@ -479,6 +487,10 @@ const winModal = document.getElementById("winModal");
 const journeyModal = document.getElementById("journeyModal");
 const startModal = document.getElementById("startModal");
 
+const messageModal = document.getElementById("messageModal");
+const messageTitle = document.getElementById("messageTitle");
+const messageText = document.getElementById("messageText");
+
 const paymentControls = document.getElementById("paymentControls");
 const finalSummary = document.getElementById("finalSummary");
 
@@ -632,10 +644,14 @@ function acknowledgeEvent() {
     if(removeFromAccount != 0){
       msg = `$${removeFromAccount} was removed from your account.`
     }
-    msg += `💥Insufficient funds to cover "${currentEvent.text}".  
+    msg += `💥Insufficient funds to cover "${currentEvent.text}". <br> 
            Credit card was charged the difference of $${remaining}.`
   }else{
     msg = `$${Math.abs(difference)} was ${difference >=0? "added to":"removed from"} your account.`
+  }
+  if(checkingBalance == 0){
+    showMessage("Zero Balance",`💡 Though it is wise to pay off high interest balances, ensure you maintain enough funds to
+             make monthly minimum payments.  Late fees are costly!`)
   }
   eventScenario.innerHTML += `<div class="monthlyStatement">
                                 Monthly Income: $${monthlyIncome}<br>
@@ -666,6 +682,9 @@ function startTimer() {
       timerEl.innerHTML = `🧠 Review your situation... (${timer-30})`;
     } else{
       updateTimer();
+    }
+    if(timer == 10){
+      showToast("Make the minimum payment or incur a late fee","error");
     }
 
     if(timer<=0){
@@ -702,7 +721,6 @@ function updateTimer() {
 }
 
 
-
 function makePayment(amount){
   if(gameOver) return;
 
@@ -711,11 +729,9 @@ function makePayment(amount){
     return; 
   }
 
-  clearInterval(timerInterval);
-
-  // 🔥 Check minimum BEFORE processing
   const minimumDue = 25; //Math.min(Math.max(balance * 0.02, 25), balance);
 
+  // ❗ Validate BEFORE stopping timer
   if (amount < minimumDue) {
     showToast(
       `Minimum payment is $${minimumDue.toFixed(2)}. Paying less will result in a late fee.`,
@@ -724,7 +740,9 @@ function makePayment(amount){
     return;
   }
 
-  // ✅ Normal payment path
+  // ✅ NOW stop timer (valid payment only)
+  clearInterval(timerInterval);
+
   checkingBalance -= amount;
   processMonth(amount);
 
@@ -809,7 +827,6 @@ function processMonth(payment){
   if (balance < 0.01) balance = 0;
 
   let lateFeeThisMonth = (payment < 25 || timer <= 0) ? 35 : 0;
-  if(lateFeeThisMonth) timer = 1;
 
   debtJourney.push({
     month: month,
@@ -839,6 +856,15 @@ function processMonth(payment){
   }
   
 }
+function showMessage(title, text) {
+  messageTitle.innerText = title;
+  messageText.innerText = text;
+  messageModal.classList.add("show");
+}
+
+function closeMessageModal() {
+  messageModal.classList.remove("show");
+}
 
 function showToast(message, type = "info") {
   const toast = document.createElement("div");
@@ -848,12 +874,16 @@ function showToast(message, type = "info") {
 
   document.getElementById("toastContainer").appendChild(toast);
 
-  setTimeout(() => toast.classList.add("show"), 10);
+  // Show animation
+  setTimeout(() => {
+    toast.classList.add("show");
+  }, 10);
 
+  // Remove toast
   setTimeout(() => {
     toast.classList.remove("show");
     setTimeout(() => toast.remove(), 300);
-  }, 2500);
+  }, 3000);
 }
 
 function openJourneyModal() {
