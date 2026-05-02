@@ -1056,6 +1056,90 @@ function buildJourneyModal() {
   }).join("");
 }
 
+function calculateGrade() {
+  let score = 100;
+
+  const totalMonths = debtJourney.length;
+
+  let lateCount = debtJourney.filter(s => s.lateFee > 0).length;
+  let minPayments = debtJourney.filter(s => s.payment < 25).length;
+  let strongPayments = debtJourney.filter(s => s.payment >= 100).length;
+
+  // ❌ Late fees (big penalty)
+  score -= lateCount * 10;
+
+  // ❌ Below minimum payments
+  score -= minPayments * 5;
+
+  // ✅ Reward strong payments
+  score += strongPayments * 2;
+
+  // ❌ Interest penalty (scaled)
+  const avgInterest = totalInterest / totalMonths;
+  score -= avgInterest * 0.2;
+
+  // Clamp score between 0–100
+  score = Math.max(0, Math.min(100, score));
+
+  return score;
+}
+
+function getLetterGrade(score) {
+  if (score >= 90) return "A";
+  if (score >= 80) return "B";
+  if (score >= 70) return "C";
+  if (score >= 60) return "D";
+  return "F";
+}
+
+function getGradeFeedback(grade) {
+  switch(grade) {
+    case "A": return "Excellent! You consistently made strong payments and avoided costly mistakes.";
+    case "B": return "Good job! A few small improvements could save you even more money.";
+    case "C": return "You're on the right track, but inconsistent payments cost you.";
+    case "D": return "Frequent mistakes led to unnecessary fees and interest.";
+    case "F": return "Your debt grew quickly. Focus on making consistent payments.";
+  }
+}
+
+function calculateCreditScore() {
+  let score = 850;
+
+  const totalMonths = debtJourney.length;
+
+  let lateCount = debtJourney.filter(s => s.lateFee > 0).length;
+  let minPayments = debtJourney.filter(s => s.payment < 25).length;
+  let strongPayments = debtJourney.filter(s => s.payment >= 100).length;
+
+  // 📉 Payment history (BIG impact)
+  score -= lateCount * 60; // very punishing
+
+  // 📉 Weak payment behavior
+  score -= minPayments * 15;
+
+  // 📈 Reward strong payments
+  score += strongPayments * 5;
+
+  // 📉 Utilization (average balance)
+  const avgBalance = debtJourney.reduce((sum, s) => sum + s.balance, 0) / totalMonths;
+  score -= avgBalance * 0.02; // scale down impact
+
+  // 📉 Interest burden (proxy for poor management)
+  const avgInterest = totalInterest / totalMonths;
+  score -= avgInterest * 0.5;
+
+  // Clamp to FICO range
+  score = Math.max(300, Math.min(850, score));
+
+  return Math.round(score);
+}
+function getCreditRating(score) {
+  if (score >= 800) return "Excellent";
+  if (score >= 740) return "Very Good";
+  if (score >= 670) return "Good";
+  if (score >= 580) return "Fair";
+  return "Poor";
+}
 
 function buildWinSummary() {
   const summary = document.getElementById("winSummary");
@@ -1086,6 +1170,43 @@ function buildWinSummary() {
     insight = "👍 Great job making payments each month!";
   }
   summary.innerHTML += `<br>${insight}`;
+
+  const score = calculateGrade();
+  const grade = getLetterGrade(score);
+  const creditScore = calculateCreditScore();
+  const rating = getCreditRating(creditScore);
+  const percent = (creditScore - 300) / 550 * 100;
+
+  resetTimer();
+  timerEl.innerHTML = " 🏆 Credit Card Debt Eliminated"
+
+  event.style.removeProperty("display");
+  event.innerHTML = `
+    <strong>🎓 Financial Grade</strong><br>
+    Score: ${score.toFixed(0)} / 100<br>
+    Grade: <span style="font-size:20px; font-weight:bold;">${grade}</span>
+
+    <hr>${getGradeFeedback(grade)}
+    <hr>
+    <strong>💳 Estimated Credit Score</strong><br>
+    Score: <span style="font-size:22px; font-weight:bold;">${creditScore}</span><br>
+    Rating: ${rating}
+    <div style="margin-top:10px;">
+      <div style="background:#334155; height:10px; border-radius:5px;">
+        <div style="
+          width:${percent}%;
+          height:100%;
+          background:#22c55e;
+          border-radius:5px;
+        "></div>
+      </div>
+    </div>
+    <div style="font-size:12px; margin-top:10px; opacity:0.7;">
+      *This is an educational estimate, not a real FICO score.
+    </div>
+    
+    `;
+  
 }
 function showWinModal() {
   winModal.classList.add("show");
