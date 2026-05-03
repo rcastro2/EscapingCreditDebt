@@ -352,8 +352,8 @@
 
         <strong>How to Play:</strong>
         <ul>
-          <li>You earn <strong>$150 income each month</strong></li>
-          <li>Your credit card charges <strong>24% annual interest</strong></li>
+          <li>You earn <strong>$150 surplus income each month</strong></li>
+          <li>Your credit card charges <strong>22% annual interest</strong></li>
           
           <li>Each month, an event will impact your finances (good or bad)</li>
           
@@ -366,7 +366,7 @@
           </li>
 
           <li>You choose how much to pay toward your credit card each month</li>
-          <li>Miss the payment window and you’ll be charged a <strong>$35 late fee</strong></li>
+          <li>Miss the minimum <strong>$25</strong> payment window and you’ll be charged a <strong>$35 late fee</strong></li>
         </ul>
 
         <p>
@@ -740,11 +740,10 @@ function acknowledgeEvent() {
   }else{
     msg = `$${Math.abs(difference)} was ${difference >=0? "added to":"removed from"} your account.`
   }
-  if(checkingBalance == 0){
-    let notification = zeroBalanceNotifications[zeroBalanceCount]
-    zeroBalanceCount += (zeroBalanceCount >= 2) ? 0 : 1;
-    showMessage("Zero Balance",notification.msg,notification.emoji);
-    
+  if(checkingBalance == 0 && zeroBalanceCount <= 2){
+      let notification = zeroBalanceNotifications[zeroBalanceCount]
+      showMessage("Zero Balance",notification.msg,notification.emoji);
+      zeroBalanceCount++;
   }
   eventScenario.innerHTML += `<div class="monthlyStatement">
                                 Monthly Income: $${monthlyIncome}<br>
@@ -902,16 +901,10 @@ function resetTimer(){
   timerEl.style.transform = "scale(1)";
   timerEl.style.animation = "none";
 }
-function applyLateFee(triggerModal = true){
-  totalLateFees += 35;
-  balance += 35;
-
+function applyLateFee(){
   processMonth(0);
   resetTimer();
-
-  if (triggerModal) {
-    lateModal.classList.add("show");
-  }
+  lateModal.classList.add("show");
 }
 
 function continueAfterLate(){
@@ -922,19 +915,24 @@ function continueAfterLate(){
 function processMonth(payment){
   month++;
 
-  // 🔥 Apply payment first
+  let lateFeeThisMonth = 0;
+
+  if (payment < 25) {
+    lateFeeThisMonth = 35;
+    totalLateFees += 35;
+    balance += 35;
+  }
+
+  // Apply payment
   balance -= payment;
   if (balance < 0) balance = 0;
 
-  // Then apply interest only if balance remains
+  // Interest
   let interest = balance * rate;
   totalInterest += interest;
   balance += interest;
 
-  // Clamp tiny floating values
   if (balance < 0.01) balance = 0;
-
-  let lateFeeThisMonth = (payment < 25 || timer <= 0) ? 35 : 0;
 
   debtJourney.push({
     month: month,
@@ -962,8 +960,8 @@ function processMonth(payment){
     showWinModal();  
     document.getElementById("viewJourneyContainer").style.display = "block";    
   }
-  
 }
+
 function showMessage(title, text, emoji = "") {
   messageTitle.innerText = title;
   messageText.innerHTML = text;
