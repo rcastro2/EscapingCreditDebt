@@ -647,41 +647,44 @@ function getRandomEvent() {
                            scenario:`Sometimes the best months are the ones where nothing happens. Take this opportunity to get ahead on payments inorder to decrease your credit card debt.`
                          };
 
-  let list = roll < 0.5 ? positiveEvents : negativeEvents;
+  // 2. THE MERCY MECHANIC: 
+  // If the last event was a "High" negative, force a 80% chance of a positive event next.
+  let forcePositive = (lastEventType === "negative" && lastEventSeverity === "high" && Math.random() < 0.80);
+  
+  let list;
+  if (forcePositive) {
+    list = positiveEvents;
+  } else {
+    // Normal 50/50 split for positive/negative
+    list = roll < 0.5 ? positiveEvents : negativeEvents;
+  }
 
+  // 3. THE FREQUENCY & SEVERITY FILTER
   let filtered = list.filter(event => {
-    const type = event.effect >= 0 ? "positive" : "negative";
+    // RULE A: No more than 2 occurrences per event
+    if ((event.count || 0) >= 2) return false;
 
-    // ❌ RULE 1: No high negative early (first 2 months)
-    if (month < 2 && type === "negative" && event.severity === "high") {
-      return false;
-    }
+    const isNegative = event.effect < 0;
 
-    // ❌ RULE 2: No back-to-back HIGH events
-    if (lastEventSeverity === "high" && event.severity === "high") {
-      return false;
-    }
+    // RULE B: No "High" negative events in the first 2 months
+    if (month < 2 && isNegative && event.severity === "high") return false;
 
-    // ❌ RULE 3: Avoid same type streaks for HIGH events
-    if (
-      lastEventType === type &&
-      lastEventSeverity === "high" &&
-      event.severity === "high"
-    ) {
-      return false;
-    }
+    // RULE C: No back-to-back "High" severity events (of any type)
+    if (lastEventSeverity === "high" && event.severity === "high") return false;
 
     return true;
   });
 
-  // Fallback safety (in case filter removes too much)
+  // 4. FALLBACK: If filtering leaves nothing, grab any low-impact event
   if (filtered.length === 0) {
     filtered = list.filter(e => e.severity !== "high");
   }
 
+  // Pick the event
   const event = filtered[Math.floor(Math.random() * filtered.length)];
 
-  // Track history
+  // 5. UPDATE TRACKING
+  event.count = (event.count || 0) + 1; // Increment frequency
   lastEventSeverity = event.severity;
   lastEventType = event.effect >= 0 ? "positive" : "negative";
 
@@ -1086,34 +1089,6 @@ function buildJourneyModal() {
   }).join("");
 }
 
-function calculateGrade() {
-  let score = 100;
-
-  const totalMonths = debtJourney.length;
-
-  let lateCount = debtJourney.filter(s => s.lateFee > 0).length;
-  let minPayments = debtJourney.filter(s => s.payment < 25).length;
-  let strongPayments = debtJourney.filter(s => s.payment >= 100).length;
-
-  // ❌ Late fees (big penalty)
-  score -= lateCount * 10;
-
-  // ❌ Below minimum payments
-  score -= minPayments * 5;
-
-  // ✅ Reward strong payments
-  score += strongPayments * 2;
-
-  // ❌ Interest penalty (scaled)
-  const avgInterest = totalInterest / totalMonths;
-  score -= avgInterest * 0.2;
-
-  // Clamp score between 0–100
-  score = Math.max(0, Math.min(100, score));
-
-  return score;
-}
-
 function getLetterGrade(score) {
   if (score >= 90) return "A";
   if (score >= 80) return "B";
@@ -1132,43 +1107,65 @@ function getGradeFeedback(grade) {
   }
 }
 
-function calculateCreditScore() {
-  let score = 850;
-
-  const totalMonths = debtJourney.length;
-
-  let lateCount = debtJourney.filter(s => s.lateFee > 0).length;
-  let minPayments = debtJourney.filter(s => s.payment < 25).length;
-  let strongPayments = debtJourney.filter(s => s.payment >= 100).length;
-
-  // 📉 Payment history (BIG impact)
-  score -= lateCount * 60; // very punishing
-
-  // 📉 Weak payment behavior
-  score -= minPayments * 15;
-
-  // 📈 Reward strong payments
-  score += strongPayments * 5;
-
-  // 📉 Utilization (average balance)
-  const avgBalance = debtJourney.reduce((sum, s) => sum + s.balance, 0) / totalMonths;
-  score -= avgBalance * 0.02; // scale down impact
-
-  // 📉 Interest burden (proxy for poor management)
-  const avgInterest = totalInterest / totalMonths;
-  score -= avgInterest * 0.5;
-
-  // Clamp to FICO range
-  score = Math.max(300, Math.min(850, score));
-
-  return Math.round(score);
-}
 function getCreditRating(score) {
   if (score >= 800) return "Excellent";
   if (score >= 740) return "Very Good";
   if (score >= 670) return "Good";
   if (score >= 580) return "Fair";
   return "Poor";
+}
+
+function calculateGrade() {
+  let score = 100;
+  const totalMonths = debtJourney.length;
+  let lateCount = debtJourney.filter(s => s.lateFee > 0).length;
+  let strongPayments = debtJourney.filter(s => s.payment >= 100).length;
+
+  // 1. Softer Time Penalty
+  // Only penalize after 18 months (gives them a year and a half)
+  if (totalMonths > 18) {
+    score -= (totalMonths - 18) * 2;
+  }
+
+  // 2. Linear Interest Penalty (Softer)
+  // 1 point for every $15 spent (instead of $10)
+  score -= (totalInterest / 15);
+
+  // 3. The Late Fee "Sting"
+  // Keep this at 15 points. It's a full letter grade drop, which is fair.
+  score -= lateCount * 15;
+
+  // 4. Reward for Effort
+  // Give them credit for those $100+ months! 
+  // This helps offset the "bad luck" of negative events.
+  score += Math.min(strongPayments, 10) * 2;
+
+  return Math.max(0, Math.min(100, score));
+}
+
+function calculateCreditScore() {
+  let score = 850;
+  const totalMonths = debtJourney.length;
+  let lateCount = debtJourney.filter(s => s.lateFee > 0).length;
+
+  // 1. Real-world Late Fee Impact
+  // A single late fee usually drops a score by 60-80 points.
+  score -= lateCount * 70; 
+
+  // 2. Utilization (The "Balance vs Time" factor)
+  const avgBalance = debtJourney.reduce((sum, s) => sum + s.balance, 0) / totalMonths;
+  // Lowered the multiplier to 80 so it doesn't tank the score as fast
+  const utilizationPenalty = (avgBalance / 2026) * 80; 
+  score -= utilizationPenalty;
+
+  // 3. Length of History (Reward the "Grind")
+  // Give them a sense of progress for staying in the game.
+  score += totalMonths * 3;
+
+  // 4. Small Interest Penalty
+  score -= (totalInterest / 10);
+
+  return Math.max(300, Math.min(850, Math.round(score)));
 }
 
 function buildWinSummary() {
@@ -1273,6 +1270,12 @@ window.onload = function(){
   initGame();
 }
 
+/*
+Education Tip for your Students
+If a student asks why their Credit Score is higher than their Grade, it’s a perfect "teachable moment":
+
+"A Credit Score tells the bank if they can make money off you. A Financial Grade tells you if the bank is making too much money off you. You want both to be high so you have power over your own money."
+*/
 </script>
 
 </body>
